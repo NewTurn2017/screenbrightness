@@ -13,17 +13,35 @@ enum Command: Equatable {
     case status
     case help
     case agent
+    case work
+    case away
+    case sleep
+    case awakeOn
+    case awakeOff
+    case awakeStatus
     case usageError(String)
 }
 
 /// Parse argv (excluding program name) into a Command.
 func parseArgs(_ args: [String]) -> Command {
     guard let first = args.first else { return .toggle }
+    if first == "awake" {
+        guard args.count == 2 else { return .usageError("usage: br awake on|off|status") }
+        switch args[1] {
+        case "on":     return .awakeOn
+        case "off":    return .awakeOff
+        case "status": return .awakeStatus
+        default:       return .usageError("unknown awake subcommand: \(args[1])")
+        }
+    }
     if args.count > 1 { return .usageError("too many arguments") }
     switch first {
     case "on":           return .set(100)
     case "off":          return .set(0)
     case "status":       return .status
+    case "work":         return .work
+    case "away":         return .away
+    case "sleep":        return .sleep
     case "agent":        return .agent
     case "-h", "--help": return .help
     default:
@@ -39,14 +57,22 @@ func errPrint(_ s: String) {
 
 func usageText() -> String {
     return """
-    br — built-in display brightness toggle
+    br — built-in display brightness + power modes
 
-    usage:
+    brightness:
       br            toggle 0% <-> 100%
-      br on         set 100%
-      br off        set 0%
+      br on/off     100% / 0%
       br <0-100>    set that percent
       br status     print current percent
+
+    power modes:
+      br work       keep awake + screen on (100%)
+      br away       keep awake + screen off now
+      br sleep      sleep the Mac now
+      br awake on   keep awake only
+      br awake off  stop keeping awake
+      br awake status
+
       br agent      run the global-hotkey agent (usually launched by launchd)
       br -h         show this help
     """
@@ -85,5 +111,15 @@ func runCLI(_ args: [String]) -> Int32 {
             let v = try d.toggle()
             applySleepCoupling(forBrightness: v)
         }
+    case .work:  return runWork()
+    case .away:  return runAway()
+    case .sleep: return runSleep()
+    case .awakeOn:
+        if awakeEnsureOn() { return 0 }
+        errPrint("br: keep-awake unavailable — run: make hotkey-install"); return 1
+    case .awakeOff:
+        awakeOff(); return 0
+    case .awakeStatus:
+        print("awake: \(awakeIsOn() ? "on" : "off")"); return 0
     }
 }

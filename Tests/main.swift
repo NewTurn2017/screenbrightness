@@ -78,6 +78,16 @@ checkEqual(sleepIntent(forBrightness: 1.0), .enable, "100% -> enable sleep")
 checkEqual(sleepIntent(forBrightness: 0.5), .leave, "50% -> leave sleep unchanged")
 checkEqual(sleepIntent(forBrightness: 0.34), .leave, "34% -> leave sleep unchanged")
 
+// === parseArgs: power-mode commands ===
+checkEqual(parseArgs(["work"]), .work, "work -> .work")
+checkEqual(parseArgs(["away"]), .away, "away -> .away")
+checkEqual(parseArgs(["sleep"]), .sleep, "sleep -> .sleep")
+checkEqual(parseArgs(["awake", "on"]), .awakeOn, "awake on -> .awakeOn")
+checkEqual(parseArgs(["awake", "off"]), .awakeOff, "awake off -> .awakeOff")
+checkEqual(parseArgs(["awake", "status"]), .awakeStatus, "awake status -> .awakeStatus")
+check(isUsageError(parseArgs(["awake"])), "awake alone -> usageError")
+check(isUsageError(parseArgs(["awake", "bad"])), "awake bad -> usageError")
+
 // === SUMMARY (keep last) ===
 print("\n\(testsRun - testsFailed)/\(testsRun) passed")
 exit(testsFailed == 0 ? 0 : 1)
