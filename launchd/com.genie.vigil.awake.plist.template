@@ -4,7 +4,7 @@
 <plist version="1.0">
 <dict>
   <key>Label</key>
-  <string>com.genie.br.awake</string>
+  <string>com.genie.vigil.awake</string>
   <key>ProgramArguments</key>
   <array>
     <string>/usr/bin/caffeinate</string>

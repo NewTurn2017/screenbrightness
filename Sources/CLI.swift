@@ -26,7 +26,7 @@ enum Command: Equatable {
 func parseArgs(_ args: [String]) -> Command {
     guard let first = args.first else { return .toggle }
     if first == "awake" {
-        guard args.count == 2 else { return .usageError("usage: br awake on|off|status") }
+        guard args.count == 2 else { return .usageError("usage: vigil awake on|off|status") }
         switch args[1] {
         case "on":     return .awakeOn
         case "off":    return .awakeOff
@@ -57,24 +57,24 @@ func errPrint(_ s: String) {
 
 func usageText() -> String {
     return """
-    br — built-in display brightness + power modes
+    vigil — keep your Mac awake + control the display
 
     brightness:
-      br            toggle 0% <-> 100%
-      br on/off     100% / 0%
-      br <0-100>    set that percent
-      br status     print current percent
+      vigil            toggle 0% <-> 100%
+      vigil on/off     100% / 0%
+      vigil <0-100>    set that percent
+      vigil status     print current percent
 
     power modes:
-      br work       keep awake + screen on (100%)
-      br away       keep awake + screen off now
-      br sleep      sleep the Mac now
-      br awake on   keep awake only
-      br awake off  stop keeping awake
-      br awake status
+      vigil work       keep awake + screen on (100%)
+      vigil away       keep awake + screen off now
+      vigil sleep      sleep the Mac now
+      vigil awake on   keep awake only
+      vigil awake off  stop keeping awake
+      vigil awake status
 
-      br agent      run the global-hotkey agent (usually launched by launchd)
-      br -h         show this help
+      vigil agent      run the global-hotkey agent (usually launched by launchd)
+      vigil -h         show this help
     """
 }
 
@@ -84,7 +84,7 @@ func withDisplay(_ body: (BuiltinDisplay) throws -> Void) -> Int32 {
         try body(BuiltinDisplay())
         return 0
     } catch {
-        errPrint("br: \(error)")
+        errPrint("vigil: \(error)")
         return 1
     }
 }
@@ -95,7 +95,7 @@ func runCLI(_ args: [String]) -> Int32 {
     case .help:
         print(usageText()); return 0
     case .usageError(let msg):
-        errPrint("br: \(msg)"); errPrint(usageText()); return 2
+        errPrint("vigil: \(msg)"); errPrint(usageText()); return 2
     case .agent:
         return runAgent()
     case .status:
@@ -116,7 +116,7 @@ func runCLI(_ args: [String]) -> Int32 {
     case .sleep: return runSleep()
     case .awakeOn:
         if awakeEnsureOn() { return 0 }
-        errPrint("br: keep-awake unavailable — run: make hotkey-install"); return 1
+        errPrint("vigil: keep-awake unavailable — run: make hotkey-install"); return 1
     case .awakeOff:
         awakeOff(); return 0
     case .awakeStatus:

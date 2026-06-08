@@ -1,12 +1,12 @@
 PREFIX ?= /usr/local
-BIN := br
+BIN := vigil
 LIB := Sources/Brightness.swift Sources/CLI.swift Sources/Agent.swift Sources/Sleep.swift Sources/Awake.swift
-PLIST := com.genie.br
+PLIST := com.genie.vigil
 LAUNCH_AGENT := $(HOME)/Library/LaunchAgents/$(PLIST).plist
-LOG := $(HOME)/Library/Logs/br-agent.log
+LOG := $(HOME)/Library/Logs/vigil-agent.log
 DOMAIN := gui/$(shell id -u)
-SUDOERS := /etc/sudoers.d/br
-AWAKE_PLIST := com.genie.br.awake
+SUDOERS := /etc/sudoers.d/vigil
+AWAKE_PLIST := com.genie.vigil.awake
 AWAKE_LAUNCH_AGENT := $(HOME)/Library/LaunchAgents/$(AWAKE_PLIST).plist
 
 .PHONY: all test install uninstall hotkey-install hotkey-uninstall sleep-setup sleep-teardown clean
@@ -16,11 +16,11 @@ all: $(BIN)
 $(BIN): $(LIB) Sources/main.swift
 	swiftc -O -o $(BIN) $(LIB) Sources/main.swift
 
-br-test: $(LIB) Tests/main.swift
-	swiftc -o br-test $(LIB) Tests/main.swift
+vigil-test: $(LIB) Tests/main.swift
+	swiftc -o vigil-test $(LIB) Tests/main.swift
 
-test: br-test
-	./br-test
+test: vigil-test
+	./vigil-test
 
 install: $(BIN)
 	install -d "$(PREFIX)/bin"
@@ -54,16 +54,16 @@ hotkey-uninstall:
 sleep-setup:
 	@u=$${SUDO_USER:-$$(id -un)}; \
 		echo "installing sleep-control sudoers rule for user: $$u"; \
-		sed "s#__USER__#$$u#" sudoers/br.sudoers.template > /tmp/br.sudoers
-	sudo visudo -cf /tmp/br.sudoers
-	sudo install -m 0440 -o root -g wheel /tmp/br.sudoers "$(SUDOERS)"
-	@rm -f /tmp/br.sudoers
-	@echo "sleep control enabled. Now 'br off' enables clamshell (no-sleep), 'br on' restores sleep."
-	@echo "test: br off; pmset -g | grep SleepDisabled   # -> 1 ; then br on -> 0"
+		sed "s#__USER__#$$u#" sudoers/vigil.sudoers.template > /tmp/vigil.sudoers
+	sudo visudo -cf /tmp/vigil.sudoers
+	sudo install -m 0440 -o root -g wheel /tmp/vigil.sudoers "$(SUDOERS)"
+	@rm -f /tmp/vigil.sudoers
+	@echo "sleep control enabled. Now 'vigil off' enables clamshell (no-sleep), 'vigil on' restores sleep."
+	@echo "test: vigil off; pmset -g | grep SleepDisabled   # -> 1 ; then vigil on -> 0"
 
 sleep-teardown:
 	sudo rm -f "$(SUDOERS)"
-	@echo "sleep control disabled (removed $(SUDOERS)). br off/on no longer touch sleep."
+	@echo "sleep control disabled (removed $(SUDOERS)). vigil off/on no longer touch sleep."
 
 clean:
-	rm -f $(BIN) br-test
+	rm -f $(BIN) vigil-test

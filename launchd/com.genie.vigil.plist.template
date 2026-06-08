@@ -4,7 +4,7 @@
 <plist version="1.0">
 <dict>
   <key>Label</key>
-  <string>com.genie.br</string>
+  <string>com.genie.vigil</string>
   <key>ProgramArguments</key>
   <array>
     <string>__BR_PATH__</string>

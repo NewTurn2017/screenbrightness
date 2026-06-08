@@ -1,7 +1,7 @@
 import Foundation
 
 /// Path to the scoped sudoers rule installed by `make sleep-setup`.
-private let sudoersPath = "/etc/sudoers.d/br"
+private let sudoersPath = "/etc/sudoers.d/vigil"
 
 /// Whether sleep/clamshell coupling should change with a given brightness endpoint.
 enum SleepIntent: Equatable {
@@ -30,12 +30,12 @@ func setSleepDisabled(_ disabled: Bool) -> Bool {
     do {
         try proc.run()
     } catch {
-        errPrint("br: could not launch pmset (\(error.localizedDescription))")
+        errPrint("vigil: could not launch pmset (\(error.localizedDescription))")
         return false
     }
     proc.waitUntilExit()
     if proc.terminationStatus != 0 {
-        errPrint("br: sleep control failed — run: sudo make sleep-setup")
+        errPrint("vigil: sleep control failed — run: sudo make sleep-setup")
         return false
     }
     return true

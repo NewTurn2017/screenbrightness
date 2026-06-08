@@ -1,6 +1,6 @@
 import Foundation
 
-private let awakeLabel = "com.genie.br.awake"
+private let awakeLabel = "com.genie.vigil.awake"
 private func awakeTarget() -> String { "gui/\(getuid())/\(awakeLabel)" }
 
 /// Run launchctl with args; return its exit status (or -1 if it could not launch).
@@ -64,22 +64,22 @@ func sleepNow() -> Bool { pmsetAction("sleepnow") }
 /// work: keep-awake ON + brightness 100%.
 func runWork() -> Int32 {
     var ok = true
-    if !awakeEnsureOn() { errPrint("br: keep-awake unavailable — run: make hotkey-install"); ok = false }
-    do { try BuiltinDisplay().setBrightness(1.0) } catch { errPrint("br: \(error)"); ok = false }
+    if !awakeEnsureOn() { errPrint("vigil: keep-awake unavailable — run: make hotkey-install"); ok = false }
+    do { try BuiltinDisplay().setBrightness(1.0) } catch { errPrint("vigil: \(error)"); ok = false }
     return ok ? 0 : 1
 }
 
 /// away: keep-awake ON + display sleep now.
 func runAway() -> Int32 {
     var ok = true
-    if !awakeEnsureOn() { errPrint("br: keep-awake unavailable — run: make hotkey-install"); ok = false }
-    if !displaySleepNow() { errPrint("br: displaysleepnow failed"); ok = false }
+    if !awakeEnsureOn() { errPrint("vigil: keep-awake unavailable — run: make hotkey-install"); ok = false }
+    if !displaySleepNow() { errPrint("vigil: displaysleepnow failed"); ok = false }
     return ok ? 0 : 1
 }
 
 /// sleep: keep-awake OFF + sleep now.
 func runSleep() -> Int32 {
     awakeOff()
-    if !sleepNow() { errPrint("br: sleepnow failed"); return 1 }
+    if !sleepNow() { errPrint("vigil: sleepnow failed"); return 1 }
     return 0
 }

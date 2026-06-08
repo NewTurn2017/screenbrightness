@@ -92,29 +92,29 @@ func parseBindings(_ text: String) -> [Binding] {
             case "away":   action = .away
             case "sleep":  action = .sleep
             default:
-                errPrint("br: unknown action '\(lhs)' (use on/off/toggle/work/away/sleep), skipping")
+                errPrint("vigil: unknown action '\(lhs)' (use on/off/toggle/work/away/sleep), skipping")
                 continue
             }
         }
         if let hk = parseHotkey(comboStr) {
             result.append(Binding(hotkey: hk, action: action))
         } else {
-            errPrint("br: could not parse hotkey '\(comboStr)', skipping")
+            errPrint("vigil: could not parse hotkey '\(comboStr)', skipping")
         }
     }
     return result
 }
 
-/// Load bindings from ~/.config/br/hotkey.conf; fall back to a single default toggle.
+/// Load bindings from ~/.config/vigil/hotkey.conf; fall back to a single default toggle.
 func loadBindings() -> [Binding] {
     let url = FileManager.default.homeDirectoryForCurrentUser
-        .appendingPathComponent(".config/br/hotkey.conf")
+        .appendingPathComponent(".config/vigil/hotkey.conf")
     guard let raw = try? String(contentsOf: url, encoding: .utf8) else {
         return [Binding(hotkey: defaultHotkey, action: .toggle)]
     }
     let bindings = parseBindings(raw)
     if bindings.isEmpty {
-        errPrint("br: no valid hotkeys in config, using default ctrl-opt-cmd-B toggle")
+        errPrint("vigil: no valid hotkeys in config, using default ctrl-opt-cmd-B toggle")
         return [Binding(hotkey: defaultHotkey, action: .toggle)]
     }
     return bindings
@@ -180,11 +180,11 @@ func runAgent() -> Int32 {
         if status == noErr {
             registered += 1
         } else {
-            errPrint("br: could not register hotkey for \(b.action) (status \(status)); is the combo already in use?")
+            errPrint("vigil: could not register hotkey for \(b.action) (status \(status)); is the combo already in use?")
         }
     }
     guard registered > 0 else {
-        errPrint("br: no hotkeys could be registered")
+        errPrint("vigil: no hotkeys could be registered")
         return 1
     }
 
