@@ -1,6 +1,6 @@
 PREFIX ?= /usr/local
 BIN := br
-LIB := Sources/Brightness.swift Sources/CLI.swift Sources/Agent.swift Sources/Sleep.swift
+LIB := Sources/Brightness.swift Sources/CLI.swift Sources/Agent.swift Sources/Sleep.swift Sources/Awake.swift
 PLIST := com.genie.br
 LAUNCH_AGENT := $(HOME)/Library/LaunchAgents/$(PLIST).plist
 LOG := $(HOME)/Library/Logs/br-agent.log
