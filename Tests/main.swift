@@ -48,6 +48,16 @@ do {
     check(false, "brightness round-trip threw: \(error)")
 }
 
+// === hotkey parsing ===
+check(parseHotkey("ctrl+opt+cmd+b") == Hotkey(keyCode: 11, modifiers: 6400), "parse ctrl+opt+cmd+b")
+check(parseHotkey("cmd+shift+l") == Hotkey(keyCode: 37, modifiers: 768), "parse cmd+shift+l")
+check(parseHotkey("f13") == Hotkey(keyCode: 105, modifiers: 0), "parse f13 (no mods)")
+check(parseHotkey("CMD-B") == Hotkey(keyCode: 11, modifiers: 256), "parse CMD-B (case/dash)")
+check(parseHotkey("") == nil, "empty -> nil")
+check(parseHotkey("cmd+shift") == nil, "mods only -> nil")
+check(parseHotkey("cmd+zzz") == nil, "unknown key -> nil")
+check(defaultHotkey == Hotkey(keyCode: 11, modifiers: 6400), "default is ctrl-opt-cmd-B")
+
 // === SUMMARY (keep last) ===
 print("\n\(testsRun - testsFailed)/\(testsRun) passed")
 exit(testsFailed == 0 ? 0 : 1)
