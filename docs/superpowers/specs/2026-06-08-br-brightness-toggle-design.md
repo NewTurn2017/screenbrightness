@@ -32,8 +32,7 @@
   100%, per the agreed behavior).
 - Menu-bar UI / Dock icon (the agent is headless — `.accessory` activation policy).
 - Decimal percentages (integer `0`–`100` only).
-- Configurable hotkey *actions* (the hotkey only ever toggles; only the key combo
-  is configurable).
+- Hotkey actions beyond `on` / `off` / `toggle` (e.g. a key bound to set 37%).
 
 ## CLI Interface
 
@@ -115,23 +114,31 @@ case toggle:  get -> set (v > eps ? 0 : 1)       // on rc!=0: stderr, exit 1
 
 ### Agent mode (`Agent.swift`)
 
+- **Bindings:** the agent registers one or more hotkeys, each bound to an action
+  (`on` = 100%, `off` = 0%, `toggle`). A fixed Carbon hotkey id per action
+  (on=1, off=2, toggle=3) lets a single stateless event handler tell presses apart
+  via `GetEventParameter(kEventParamDirectObject, typeEventHotKeyID)`.
 - **Hotkey registration:** Carbon `RegisterEventHotKey` on
-  `GetApplicationEventTarget()`, with an `InstallEventHandler` for
+  `GetApplicationEventTarget()` per binding, with one `InstallEventHandler` for
   `kEventHotKeyPressed`. The handler is a non-capturing closure (convertible to
-  `EventHandlerUPP`) that calls the same `toggle()` as the CLI. `RegisterEventHotKey`
-  requires **no Accessibility permission**.
+  `EventHandlerUPP`) that reads the pressed hotkey's id and performs the matching
+  action. `RegisterEventHotKey` requires **no Accessibility permission**.
 - **Run loop:** `NSApplication.shared`, `setActivationPolicy(.accessory)` (headless,
   no Dock icon), then `app.run()`. Running inside the user's Aqua GUI session (via
   the LaunchAgent) gives the window-server connection the hotkey needs.
-- **Default hotkey:** `⌃⌥⌘B` → Carbon `keyCode = 11` (kVK_ANSI_B),
-  `modifiers = controlKey | optionKey | cmdKey = 6400`.
-- **Hotkey config:** optional single-line `~/.config/br/hotkey.conf`, e.g.
-  `ctrl+opt+cmd+b`. Parsed into modifiers + key via a small token map
+- **Default (no config):** a single `toggle` bound to `⌃⌥⌘B` → Carbon
+  `keyCode = 11` (kVK_ANSI_B), `modifiers = controlKey | optionKey | cmdKey = 6400`.
+- **Hotkey config:** optional `~/.config/br/hotkey.conf`, one `action = combo` per
+  line where action is `on` / `off` / `toggle` (a bare line with no `=` is treated
+  as a toggle combo). Each combo is parsed into modifiers + key via a token map
   (`ctrl`/`control`, `opt`/`option`/`alt`, `cmd`/`command`/`super`, `shift`, plus a
-  final key from a keycode table covering `a`–`z`, `0`–`9`, `f1`–`f20`, `space`,
-  `escape`). Missing/unparseable file → log a warning to stderr and use the default.
-- **Registration failure** (e.g. the combo is already taken): log a clear message
-  and exit 1. launchd's default respawn throttle (~10s) prevents a tight crash loop.
+  key from a keycode table covering `a`–`z`, `0`–`9`, `f1`–`f20`, `space`,
+  `escape`, `return`, `tab`). Blank lines and `#` comments are ignored. Unparseable
+  lines are skipped with a stderr warning; an empty/missing config falls back to the
+  default `⌃⌥⌘B` toggle. Example: `on = cmd+shift+0` and `off = cmd+shift+9`.
+- **Registration failure** (e.g. a combo is already taken): log a clear message per
+  binding; the agent exits 1 only if **no** hotkey could be registered. launchd's
+  default respawn throttle (~10s) prevents a tight crash loop.
 
 ## Build & Install
 
@@ -208,7 +215,9 @@ stderr, which the LaunchAgent routes to `~/Library/Logs/br-agent.log`.
   visibly changing the screen. Also asserts arg parsing: `br 150` and `br abc`
   exit 2; `br status` prints a `0`–`100` integer.
 - **Hotkey-config unit check:** parsing `ctrl+opt+cmd+b` yields keyCode 11,
-  modifiers 6400; an empty/garbage line falls back to the default.
+  modifiers 6400; `parseBindings` maps `on = cmd+shift+0` / `off = cmd+shift+9` to
+  the right `(keyCode, modifiers, action)`; comments/blank/unknown-action/bad-combo
+  lines are skipped; a bare line becomes a toggle binding.
 - **Manual:** `br status` shows current %; `br off` blacks the screen; the hotkey
   (`⌃⌥⌘B`) restores it to 100%; pressing again blacks it; `br 50` lands at ~50%.
   After `make hotkey-install`, the hotkey works in any app and survives logout/login.

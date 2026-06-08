@@ -58,6 +58,20 @@ check(parseHotkey("cmd+shift") == nil, "mods only -> nil")
 check(parseHotkey("cmd+zzz") == nil, "unknown key -> nil")
 check(defaultHotkey == Hotkey(keyCode: 11, modifiers: 6400), "default is ctrl-opt-cmd-B")
 
+// === parseBindings (per-action hotkeys) ===
+let cfg = "on = cmd+shift+0\noff = cmd+shift+9\n"
+let pb = parseBindings(cfg)
+checkEqual(pb.count, 2, "two bindings parsed")
+check(pb.contains(Binding(hotkey: Hotkey(keyCode: 29, modifiers: 768), action: .on)),
+      "on -> cmd+shift+0 (key 29, mods 768)")
+check(pb.contains(Binding(hotkey: Hotkey(keyCode: 25, modifiers: 768), action: .off)),
+      "off -> cmd+shift+9 (key 25, mods 768)")
+check(parseBindings("ctrl+opt+cmd+b").first == Binding(hotkey: Hotkey(keyCode: 11, modifiers: 6400), action: .toggle),
+      "bare line -> toggle (legacy format)")
+checkEqual(parseBindings("# comment\n\non=cmd+shift+0\n").count, 1, "skip comments and blank lines")
+checkEqual(parseBindings("foo = cmd+b").count, 0, "unknown action skipped")
+checkEqual(parseBindings("on = cmd+nope").count, 0, "unparseable combo skipped")
+
 // === SUMMARY (keep last) ===
 print("\n\(testsRun - testsFailed)/\(testsRun) passed")
 exit(testsFailed == 0 ? 0 : 1)

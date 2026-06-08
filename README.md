@@ -31,18 +31,27 @@ Ensure your install bin is on `PATH` (for `$HOME/.local`: add
 make hotkey-install PREFIX=$HOME/.local
 ```
 
-Default hotkey: **Control-Option-Command-B**. Press it anywhere to black out the
-screen; press again to restore — even while the screen is black.
+By default a single key — **Control-Option-Command-B** — toggles 0% ↔ 100%.
 
-Change the hotkey by writing one line to `~/.config/br/hotkey.conf`, e.g.:
+Configure your own keys in `~/.config/br/hotkey.conf`, one `action = combo` per
+line, where action is `on`, `off`, or `toggle`. For example, separate on/off keys:
 
 ```
-ctrl+opt+cmd+b
+on  = cmd+shift+0
+off = cmd+shift+9
 ```
 
-Separators `+`, `-`, or space; modifiers `ctrl`, `opt`/`alt`, `cmd`, `shift`;
-keys `a`–`z`, `0`–`9`, `f1`–`f20`, `space`, `escape`, `return`, `tab`. After
-editing, reload: `make hotkey-install PREFIX=$HOME/.local`.
+Or a single toggle key:
+
+```
+toggle = ctrl+opt+cmd+b
+```
+
+(A bare line with no `=`, like `ctrl+opt+cmd+b`, is treated as a toggle.)
+
+Combo syntax — separators `+`, `-`, or space; modifiers `ctrl`, `opt`/`alt`,
+`cmd`, `shift`; keys `a`–`z`, `0`–`9`, `f1`–`f20`, `space`, `escape`, `return`,
+`tab`. After editing, reload: `make hotkey-install PREFIX=$HOME/.local`.
 
 Remove the agent: `make hotkey-uninstall PREFIX=$HOME/.local`. Agent logs:
 `~/Library/Logs/br-agent.log`.

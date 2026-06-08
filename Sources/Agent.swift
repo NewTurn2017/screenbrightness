@@ -7,6 +7,19 @@ struct Hotkey: Equatable {
     var modifiers: UInt32
 }
 
+/// What a hotkey does when pressed.
+enum HotkeyAction: Equatable {
+    case on       // set 100%
+    case off      // set 0%
+    case toggle   // 0% <-> 100%
+}
+
+/// A hotkey bound to an action.
+struct Binding: Equatable {
+    var hotkey: Hotkey
+    var action: HotkeyAction
+}
+
 // Carbon modifier masks (cmdKey/shiftKey/optionKey/controlKey).
 let kBRcmd: UInt32   = 256
 let kBRshift: UInt32 = 512
@@ -32,7 +45,7 @@ func keyCode(for token: String) -> UInt32? {
     return letters[t] ?? digits[t] ?? named[t]
 }
 
-/// Parse a hotkey string like "ctrl+opt+cmd+b" (separators: + - space). nil if no key.
+/// Parse a hotkey string like "cmd+shift+0" (separators: + - space). nil if no key.
 func parseHotkey(_ line: String) -> Hotkey? {
     let tokens = line.lowercased()
         .split(whereSeparator: { $0 == "+" || $0 == "-" || $0 == " " })
@@ -55,38 +68,104 @@ func parseHotkey(_ line: String) -> Hotkey? {
     return Hotkey(keyCode: k, modifiers: mods)
 }
 
-/// Load the hotkey from ~/.config/br/hotkey.conf; fall back to the default.
-func loadHotkey() -> Hotkey {
+/// Parse a hotkey config into bindings. Lines are `action = combo` where action is
+/// `on`, `off`, or `toggle`; a line with no `=` is treated as a toggle combo
+/// (legacy single-line format). Blank lines and `#` comments are ignored.
+func parseBindings(_ text: String) -> [Binding] {
+    var result: [Binding] = []
+    for rawLine in text.split(separator: "\n", omittingEmptySubsequences: false) {
+        let line = rawLine.trimmingCharacters(in: .whitespaces)
+        if line.isEmpty || line.hasPrefix("#") { continue }
+        var action: HotkeyAction = .toggle
+        var comboStr = line
+        if let eq = line.firstIndex(of: "=") {
+            let lhs = line[..<eq].trimmingCharacters(in: .whitespaces).lowercased()
+            comboStr = String(line[line.index(after: eq)...]).trimmingCharacters(in: .whitespaces)
+            switch lhs {
+            case "on":     action = .on
+            case "off":    action = .off
+            case "toggle": action = .toggle
+            default:
+                errPrint("br: unknown action '\(lhs)' (use on/off/toggle), skipping")
+                continue
+            }
+        }
+        if let hk = parseHotkey(comboStr) {
+            result.append(Binding(hotkey: hk, action: action))
+        } else {
+            errPrint("br: could not parse hotkey '\(comboStr)', skipping")
+        }
+    }
+    return result
+}
+
+/// Load bindings from ~/.config/br/hotkey.conf; fall back to a single default toggle.
+func loadBindings() -> [Binding] {
     let url = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent(".config/br/hotkey.conf")
-    guard let raw = try? String(contentsOf: url, encoding: .utf8) else { return defaultHotkey }
-    let line = raw.split(separator: "\n").map(String.init)
-        .map { $0.trimmingCharacters(in: .whitespaces) }
-        .first(where: { !$0.isEmpty && !$0.hasPrefix("#") }) ?? ""
-    if let hk = parseHotkey(line) { return hk }
-    errPrint("br: could not parse hotkey '\(line)', using default ctrl-opt-cmd-B")
-    return defaultHotkey
+    guard let raw = try? String(contentsOf: url, encoding: .utf8) else {
+        return [Binding(hotkey: defaultHotkey, action: .toggle)]
+    }
+    let bindings = parseBindings(raw)
+    if bindings.isEmpty {
+        errPrint("br: no valid hotkeys in config, using default ctrl-opt-cmd-B toggle")
+        return [Binding(hotkey: defaultHotkey, action: .toggle)]
+    }
+    return bindings
+}
+
+/// Fixed Carbon hotkey id per action — lets the (stateless) event handler tell them apart.
+private func actionID(_ a: HotkeyAction) -> UInt32 {
+    switch a {
+    case .on:     return 1
+    case .off:    return 2
+    case .toggle: return 3
+    }
+}
+
+/// Run the action identified by its Carbon hotkey id.
+private func performAction(id: UInt32) {
+    guard let d = try? BuiltinDisplay() else { return }
+    switch id {
+    case 1:  try? d.setBrightness(1.0)   // on
+    case 2:  try? d.setBrightness(0.0)   // off
+    default: try? d.toggle()             // toggle (id 3)
+    }
 }
 
 /// Run the headless global-hotkey agent. Blocks in the app run loop on success;
-/// returns a nonzero exit code if the hotkey could not be registered.
+/// returns a nonzero exit code if no hotkey could be registered.
 func runAgent() -> Int32 {
-    let hk = loadHotkey()
+    let bindings = loadBindings()
 
-    // Handle hotkey-pressed events by toggling brightness.
+    // One handler for all hotkeys; it reads the pressed hotkey's id and acts on it.
     var spec = EventTypeSpec(eventClass: OSType(kEventClassKeyboard),
                              eventKind: UInt32(kEventHotKeyPressed))
-    InstallEventHandler(GetApplicationEventTarget(), { _, _, _ in
-        try? BuiltinDisplay().toggle()   // fresh resolve each press; dlopen is cached
+    InstallEventHandler(GetApplicationEventTarget(), { _, event, _ in
+        var hkID = EventHotKeyID()
+        if let event = event {
+            GetEventParameter(event, EventParamName(kEventParamDirectObject),
+                              EventParamType(typeEventHotKeyID), nil,
+                              MemoryLayout<EventHotKeyID>.size, nil, &hkID)
+        }
+        performAction(id: hkID.id)
         return noErr
     }, 1, &spec, nil, nil)
 
-    var ref: EventHotKeyRef?
-    let id = EventHotKeyID(signature: OSType(0x6272_746b), id: 1) // 'brtk'
-    let status = RegisterEventHotKey(hk.keyCode, hk.modifiers, id,
-                                     GetApplicationEventTarget(), 0, &ref)
-    guard status == noErr else {
-        errPrint("br: could not register hotkey (status \(status)); is the combo already in use?")
+    var registered = 0
+    for b in bindings {
+        var ref: EventHotKeyRef?
+        let hkID = EventHotKeyID(signature: OSType(0x6272_746b), id: actionID(b.action)) // 'brtk'
+        let status = RegisterEventHotKey(b.hotkey.keyCode, b.hotkey.modifiers, hkID,
+                                         GetApplicationEventTarget(), 0, &ref)
+        if status == noErr {
+            registered += 1
+        } else {
+            errPrint("br: could not register hotkey for \(b.action) (status \(status)); is the combo already in use?")
+        }
+    }
+    guard registered > 0 else {
+        errPrint("br: no hotkeys could be registered")
         return 1
     }
 
