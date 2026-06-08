@@ -36,6 +36,18 @@ check(isUsageError(parseArgs(["abc"])), "abc -> usageError")
 check(isUsageError(parseArgs(["150"])), "150 -> usageError")
 check(isUsageError(parseArgs(["50", "60"])), "extra args -> usageError")
 
+// === BuiltinDisplay (non-destructive integration) ===
+do {
+    let d = try BuiltinDisplay()
+    let v = try d.getBrightness()
+    check(v >= 0 && v <= 1, "getBrightness in 0...1 (got \(v))")
+    try d.setBrightness(v)                 // set to current value: no visible change
+    let v2 = try d.getBrightness()
+    check(abs(v2 - v) < 0.05, "setBrightness(same) preserves value (\(v) -> \(v2))")
+} catch {
+    check(false, "brightness round-trip threw: \(error)")
+}
+
 // === SUMMARY (keep last) ===
 print("\n\(testsRun - testsFailed)/\(testsRun) passed")
 exit(testsFailed == 0 ? 0 : 1)
