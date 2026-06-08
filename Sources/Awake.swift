@@ -58,7 +58,6 @@ private func pmsetAction(_ action: String) -> Bool {
     return p.terminationStatus == 0
 }
 
-func displaySleepNow() -> Bool { pmsetAction("displaysleepnow") }
 func sleepNow() -> Bool { pmsetAction("sleepnow") }
 
 /// work: keep-awake ON + brightness 100%.
@@ -69,11 +68,11 @@ func runWork() -> Int32 {
     return ok ? 0 : 1
 }
 
-/// away: keep-awake ON + display sleep now.
+/// away: keep-awake ON + brightness 0% (screen black, no display sleep → no lock/password).
 func runAway() -> Int32 {
     var ok = true
     if !awakeEnsureOn() { errPrint("vigil: keep-awake unavailable — run: make hotkey-install"); ok = false }
-    if !displaySleepNow() { errPrint("vigil: displaysleepnow failed"); ok = false }
+    do { try BuiltinDisplay().setBrightness(0.0) } catch { errPrint("vigil: \(error)"); ok = false }
     return ok ? 0 : 1
 }
 
